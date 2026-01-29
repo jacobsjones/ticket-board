@@ -31,6 +31,109 @@ export interface Task {
   createdAt: number;
 }
 
+// Pre-seeded tasks that will load if localStorage is empty
+const PRESEEDED_TASKS: Omit<Task, 'createdAt'>[] = [
+  {
+    id: 'heat-pump-calc',
+    title: 'Heat pump sizing calculator app',
+    description: "Homeowners input house details → get recommended heat pump size, rough costs. You've got domain expertise from your day job.",
+    priority: 'medium' as Priority,
+    category: 'Work',
+    column: 'todo' as Column,
+    completed: false,
+  },
+  {
+    id: 'trading212-tools',
+    title: 'Trading 212 API technical analysis tools',
+    description: "Research and install scripts or Python libraries for RSI, MACD, moving averages, volume data for your watchlist.",
+    priority: 'high' as Priority,
+    category: 'Trading',
+    column: 'todo' as Column,
+    completed: false,
+  },
+  {
+    id: 'eurusd-tracker',
+    title: 'EUR/USD daily level tracker',
+    description: "Track key support/resistance levels, daily range, overnight moves. Report in daily briefings.",
+    priority: 'high' as Priority,
+    category: 'Trading',
+    column: 'todo' as Column,
+    completed: false,
+  },
+  {
+    id: 'uranium-news',
+    title: 'Uranium sector news monitoring',
+    description: "Track news for YCA plus other uranium names: CCJ, UEC, NXE, UUUU, ENRCF, DNN. Sector news moves all of them.",
+    priority: 'high' as Priority,
+    category: 'Trading',
+    column: 'todo' as Column,
+    completed: false,
+  },
+  {
+    id: 'thales-research',
+    title: 'Thales research file',
+    description: "Build comprehensive profile on Thales (defense contracts, order backlog, geopolitical exposure, earnings calendar, key competitors).",
+    priority: 'medium' as Priority,
+    category: 'Trading',
+    column: 'todo' as Column,
+    completed: false,
+  },
+  {
+    id: 'gold-research',
+    title: 'Gold sector research',
+    description: "Research current gold sector trends: inflation expectations, Fed policy impact, mining stocks vs physical, key support/resistance levels.",
+    priority: 'medium' as Priority,
+    category: 'Trading',
+    column: 'todo' as Column,
+    completed: false,
+  },
+  {
+    id: 'position-tracker',
+    title: 'Position tracking system',
+    description: "Log all positions (entry price, size, stop-loss, target). Track P&L over time. Not for trading decisions — just accountability.",
+    priority: 'high' as Priority,
+    category: 'Trading',
+    column: 'todo' as Column,
+    completed: false,
+  },
+  {
+    id: 'econ-calendar',
+    title: 'Economic calendar automation',
+    description: "Set up automated tracking for: Fed meetings, CPI releases, NFP data, EUR/USD events, UK inflation numbers. Alert 24h before.",
+    priority: 'medium' as Priority,
+    category: 'Trading',
+    column: 'todo' as Column,
+    completed: false,
+  },
+  {
+    id: 'tech-sector-scan',
+    title: 'Tech sector scan setup',
+    description: "Create daily scans for tech sector momentum: big movers, new highs/lows, unusual volume. Flag interesting names for research.",
+    priority: 'low' as Priority,
+    category: 'Trading',
+    column: 'todo' as Column,
+    completed: false,
+  },
+  {
+    id: 'shorter-timeframe-practice',
+    title: 'Shorter timeframe practice routine',
+    description: "Daily 1h/4h chart review, RSI divergence practice, support/resistance levels. Daily 15-min focused session.",
+    priority: 'high' as Priority,
+    category: 'Trading',
+    column: 'todo' as Column,
+    completed: false,
+  },
+  {
+    id: 'risk-calculator',
+    title: 'Risk management calculator',
+    description: "Position size calculator: account % per trade, 1R/2R reward planning, volatility-adjusted sizing based on ATR.",
+    priority: 'high' as Priority,
+    category: 'Trading',
+    column: 'todo' as Column,
+    completed: false,
+  },
+];
+
 const PRIORITY_COLORS: Record<Priority, string> = {
   low: 'bg-blue-500/20 text-blue-700 dark:text-blue-300 border-blue-500/30 dark:border-blue-500/30',
   medium: 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-300 border-yellow-500/30 dark:border-yellow-500/30',
@@ -59,11 +162,22 @@ export default function TaskBoard() {
     column: 'todo' as Column,
   });
 
-  // Load tasks from localStorage
+  // Load tasks from localStorage, or pre-seed if empty
   useEffect(() => {
     const saved = localStorage.getItem('ticket-board-tasks');
     if (saved) {
-      setTasks(JSON.parse(saved));
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed && parsed.length > 0) {
+          setTasks(parsed);
+        } else {
+          setTasks([...PRESEEDED_TASKS]);
+        }
+      } catch {
+        setTasks([...PRESEEDED_TASKS]);
+      }
+    } else {
+      setTasks([...PRESEEDED_TASKS]);
     }
   }, []);
 
@@ -91,9 +205,9 @@ export default function TaskBoard() {
       setFormData({
         title: '',
         description: '',
-        priority: 'medium',
+        priority: 'medium' as Priority,
         category: 'General',
-        column: 'todo',
+        column: 'todo' as Column,
       });
     }
     setIsDialogOpen(true);
@@ -409,6 +523,7 @@ function TaskCard({
                 variant="outline"
                 size="sm"
                 onClick={() => onMove('in-progress')}
+                className="refresh: true
                 className="flex-1"
               >
                 → Resume
