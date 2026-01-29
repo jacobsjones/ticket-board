@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, Pencil, Trash2, Check, X } from 'lucide-react';
+import { Plus, Pencil, Trash2, Check, X, Circle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/dialog';
 
 export type Priority = 'low' | 'medium' | 'high';
+export type Column = 'todo' | 'in-progress' | 'hold' | 'done';
 
 export interface Task {
   id: string;
@@ -24,6 +25,7 @@ export interface Task {
   description: string;
   priority: Priority;
   category: string;
+  column: Column;
   completed: boolean;
   createdAt: number;
 }
@@ -34,7 +36,14 @@ const PRIORITY_COLORS: Record<Priority, string> = {
   high: 'bg-red-500/20 text-red-700 dark:text-red-300 border-red-500/30',
 };
 
-const CATEGORIES = ['General', 'Work', 'Personal', 'Health', 'Booth', 'Vending'];
+const CATEGORIES = ['General', 'Work', 'Personal', 'Health', 'Booth', 'Vending', 'Trading'];
+
+const COLUMNS: Record<Column, { title: string; icon: string; emoji: string }> = {
+  'todo': { title: 'To Do', icon: 'Circle', emoji: '📋' },
+  'in-progress': { title: 'In Progress', icon: 'Check', emoji: '🔨' },
+  'hold': { title: 'Hold', icon: 'Circle', emoji: '⏸️' },
+  'done': { title: 'Done', icon: 'Check', emoji: '✅' },
+};
 
 export default function TaskBoard() {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -45,6 +54,7 @@ export default function TaskBoard() {
     description: '',
     priority: 'medium' as Priority,
     category: 'General',
+    column: 'todo' as Column,
   });
 
   // Load tasks from localStorage
@@ -68,6 +78,7 @@ export default function TaskBoard() {
         description: task.description,
         priority: task.priority,
         category: task.category,
+        column: task.column,
       });
     } else {
       setEditingTask(null);
@@ -76,6 +87,7 @@ export default function TaskBoard() {
         description: '',
         priority: 'medium',
         category: 'General',
+        column: 'todo',
       });
     }
     setIsDialogOpen(true);
@@ -103,134 +115,144 @@ export default function TaskBoard() {
     }
 
     setIsDialogOpen(false);
-    setFormData({ title: '', description: '', priority: 'medium', category: 'General' });
+    setFormData({ title: '', description: '', priority: 'medium', category: 'General', column: 'todo' });
   };
 
   const deleteTask = (id: string) => {
     setTasks((prev) => prev.filter((t) => t.id !== id));
   };
 
-  const toggleComplete = (id: string) => {
+  const moveTask = (id: string, toColumn: Column) => {
     setTasks((prev) =>
       prev.map((t) =>
-        t.id === id ? { ...t, completed: !t.completed } : t
+        t.id === id ? { ...t, column: toColumn, completed: toColumn === 'done' } : t
       )
     );
   };
 
-  const activeTasks = tasks.filter((t) => !t.completed);
-  const completedTasks = tasks.filter((t) => t.completed);
+  const todoTasks = tasks.filter((t) => t.column === 'todo');
+  const inProgressTasks = tasks.filter((t) => t.column === 'in-progress');
+  const holdTasks = tasks.filter((t) => t.column === 'hold');
+  const doneTasks = tasks.filter((t) => t.column === 'done');
+
+  const tasksByColumn = { todo: todoTasks, 'in-progress': inProgressTasks, hold: holdTasks, done: doneTasks };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50 to-pink-50 dark:from-slate-950 dark:via-purple-950 dark:to-pink-950 p-4 md:p-8">
-      <div className="max-w-4xl mx-auto space-y-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50 to-pink-50 dark:from-slate-950 dark:via-purple-950 dark:to-pink-950 p-4 md:p-6">
+      <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="text-center space-y-2">
-          <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-            Ticket Board 🪻
-          </h1>
-          <p className="text-slate-600 dark:text-slate-400">
-            {activeTasks.length} {activeTasks.length === 1 ? 'task' : 'tasks'} to go
-          </p>
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                Board 🪻
+              </h1>
+              <p className="text-slate-600 dark:text-slate-400 mt-1">
+                {tasksByColumn.todo.length} to do · {tasksByColumn['in-progress'].length} in progress · {tasksByColumn.done.length} done
+              </p>
+            </div>
+            <Button
+              onClick={() => openDialog()}
+              size="lg"
+              className="gap-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+            >
+              <Plus className="h-5 w-5" />
+              Add Task
+            </Button>
+          </div>
         </div>
 
-        {/* Add Task Button */}
-        <div className="flex justify-end">
-          <Button
-            onClick={() => openDialog()}
-            size="lg"
-            className="gap-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
-          >
-            <Plus className="h-5 w-5" />
-            Add Task
-          </Button>
+        {/* Kanban Board */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {(Object.entries(COLUMNS) as [Column, { title: string; icon: string; emoji: string }][]).map(([columnId, col]) => (
+            <div key={columnId} className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-sm rounded-xl p-4">
+              <div className="flex items-center gap-2 mb-4">
+                <span className="text-2xl">{col.emoji}</span>
+                <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-200">
+                  {col.title}
+                </h2>
+                <Badge variant="secondary" className="ml-auto">
+                  {tasksByColumn[columnId].length}
+                </Badge>
+              </div>
+
+              {tasksByColumn[columnId].length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 text-slate-400 dark:text-slate-500 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-lg min-h-32">
+                  <Plus className="h-8 w-8 mb-2 opacity-50" />
+                  <p className="text-sm">Drop tasks here or add new</p>
+                </div>
+              ) : (
+                <div className="space-y-3 min-h-32">
+                  {tasksByColumn[columnId].map((task) => (
+                    <TaskCard
+                      key={task.id}
+                      task={task}
+                      onEdit={() => openDialog(task)}
+                      onDelete={() => deleteTask(task.id)}
+                      onMove={(col) => moveTask(task.id, col)}
+                      currentColumn={columnId}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
         </div>
 
-        {/* Active Tasks */}
-        <section className="space-y-3">
-          <h2 className="text-xl font-semibold text-slate-700 dark:text-slate-300">
-            To Do
-          </h2>
-          {activeTasks.length === 0 ? (
-            <Card className="p-8 text-center text-slate-500 dark:text-slate-400 border-dashed">
-              No tasks yet. Add one to get started! 🚀
-            </Card>
-          ) : (
-            <div className="space-y-3">
-              {activeTasks.map((task) => (
-                <TaskCard
-                  key={task.id}
-                  task={task}
-                  onEdit={() => openDialog(task)}
-                  onDelete={() => deleteTask(task.id)}
-                  onToggle={() => toggleComplete(task.id)}
-                />
-              ))}
-            </div>
-          )}
-        </section>
-
-        {/* Completed Tasks */}
-        {completedTasks.length > 0 && (
-          <section className="space-y-3">
-            <h2 className="text-xl font-semibold text-slate-500 dark:text-slate-400">
-              Done ✨
-            </h2>
-            <div className="space-y-3">
-              {completedTasks.map((task) => (
-                <TaskCard
-                  key={task.id}
-                  task={task}
-                  onEdit={() => openDialog(task)}
-                  onDelete={() => deleteTask(task.id)}
-                  onToggle={() => toggleComplete(task.id)}
-                />
-              ))}
-            </div>
-          </section>
-        )}
-      </div>
-
-      {/* Dialog */}
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>{editingTask ? 'Edit Task' : 'New Task'}</DialogTitle>
-            <DialogDescription>
-              {editingTask ? 'Update your task details.' : 'Add a new task to your board.'}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Title</label>
-              <Input
-                placeholder="What needs doing?"
-                value={formData.title}
-                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                autoFocus
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Description</label>
-              <Textarea
-                placeholder="Any details?"
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                rows={3}
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
+        {/* Dialog */}
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>{editingTask ? 'Edit Task' : 'New Task'}</DialogTitle>
+              <DialogDescription>
+                {editingTask ? 'Update your task details.' : 'Add a new task to your board.'}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium">Priority</label>
-                <select
-                  value={formData.priority}
-                  onChange={(e) => setFormData({ ...formData, priority: e.target.value as Priority })}
-                  className="flex h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm ring-offset-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-950 focus:ring-offset-2 dark:border-slate-700 dark:bg-slate-950 dark:ring-offset-slate-950"
-                >
-                  <option value="low">Low</option>
-                  <option value="medium">Medium</option>
-                  <option value="high">High</option>
-                </select>
+                <label className="text-sm font-medium">Title</label>
+                <Input
+                  placeholder="What needs doing?"
+                  value={formData.title}
+                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                  autoFocus
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Description</label>
+                <Textarea
+                  placeholder="Any details?"
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  rows={3}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Priority</label>
+                  <select
+                    value={formData.priority}
+                    onChange={(e) => setFormData({ ...formData, priority: e.target.value as Priority })}
+                    className="flex h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm ring-offset-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-950 focus:ring-offset-2 dark:border-slate-700 dark:bg-slate-950 dark:ring-offset-slate-950"
+                  >
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Column</label>
+                  <select
+                    value={formData.column}
+                    onChange={(e) => setFormData({ ...formData, column: e.target.value as Column })}
+                    className="flex h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm ring-offset-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-950 focus:ring-offset-2 dark:border-slate-700 dark:bg-slate-950 dark:ring-offset-slate-950"
+                  >
+                    <option value="todo">To Do</option>
+                    <option value="in-progress">In Progress</option>
+                    <option value="hold">Hold</option>
+                    <option value="done">Done</option>
+                  </select>
+                </div>
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium">Category</label>
@@ -247,24 +269,24 @@ export default function TaskBoard() {
                 </select>
               </div>
             </div>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setIsDialogOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSubmit}
-              disabled={!formData.title.trim()}
-              className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
-            >
-              {editingTask ? 'Save' : 'Add'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setIsDialogOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSubmit}
+                disabled={!formData.title.trim()}
+                className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+              >
+                {editingTask ? 'Save' : 'Add'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
     </div>
   );
 }
@@ -273,46 +295,21 @@ function TaskCard({
   task,
   onEdit,
   onDelete,
-  onToggle,
+  onMove,
+  currentColumn,
 }: {
   task: Task;
   onEdit: () => void;
   onDelete: () => void;
-  onToggle: () => void;
+  onMove: (to: Column) => void;
+  currentColumn: Column;
 }) {
   return (
-    <Card
-      className={`p-4 transition-all hover:shadow-lg ${
-        task.completed ? 'opacity-60' : ''
-      }`}
-    >
+    <Card className="p-4 hover:shadow-md transition-shadow">
       <div className="flex items-start gap-3">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onToggle}
-          className={`mt-1 shrink-0 ${
-            task.completed
-              ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-              : 'hover:bg-slate-100 dark:hover:bg-slate-800'
-          }`}
-        >
-          {task.completed ? (
-            <Check className="h-5 w-5" />
-          ) : (
-            <X className="h-5 w-5 opacity-0 hover:opacity-100" />
-          )}
-        </Button>
-
         <div className="flex-1 min-w-0">
-          <div className="flex flex-wrap items-center gap-2 mb-1">
-            <h3
-              className={`font-medium ${
-                task.completed
-                  ? 'line-through text-slate-500 dark:text-slate-400'
-                  : 'text-slate-900 dark:text-slate-100'
-              }`}
-            >
+          <div className="flex flex-wrap items-center gap-2 mb-2">
+            <h3 className="font-semibold text-slate-900 dark:text-slate-100">
               {task.title}
             </h3>
             <Badge className={PRIORITY_COLORS[task.priority]} variant="outline">
@@ -322,15 +319,8 @@ function TaskCard({
               {task.category}
             </Badge>
           </div>
-
           {task.description && (
-            <p
-              className={`text-sm ${
-                task.completed
-                  ? 'text-slate-400 dark:text-slate-500'
-                  : 'text-slate-600 dark:text-slate-400'
-              }`}
-            >
+            <p className="text-sm text-slate-600 dark:text-slate-400">
               {task.description}
             </p>
           )}
@@ -355,6 +345,70 @@ function TaskCard({
           </Button>
         </div>
       </div>
+
+      {/* Quick Move Buttons - Only show on active columns */}
+      {currentColumn !== 'done' && (
+        <div className="flex gap-2 mt-3 pt-3 border-t border-slate-200 dark:border-slate-700">
+          {currentColumn === 'todo' && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onMove('in-progress')}
+              className="flex-1"
+            >
+              → Start
+            </Button>
+          )}
+          {currentColumn === 'in-progress' && (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onMove('todo')}
+                className="flex-1"
+              >
+                ← Back
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onMove('hold')}
+                className="flex-1"
+              >
+                ⏸ Hold
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onMove('done')}
+                className="flex-1 bg-green-50 hover:bg-green-100 border-green-200 hover:border-green-300 text-green-700"
+              >
+                ✓ Done
+              </Button>
+            </>
+          )}
+          {currentColumn === 'hold' && (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onMove('in-progress')}
+                className="flex-1"
+              >
+                → Resume
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onMove('done')}
+                className="flex-1 bg-green-50 hover:bg-green-100 border-green-200 hover:border-green-300 text-green-700"
+              >
+                ✓ Done
+              </Button>
+            </>
+          )}
+        </div>
+      )}
     </Card>
   );
 }
