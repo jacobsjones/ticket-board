@@ -1,12 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, Pencil, Trash2, Check, X, Circle } from 'lucide-react';
+import { Plus, Pencil, Trash2, Check, X, Circle, Moon, Sun } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { useTheme } from 'next-themes';
 import {
   Dialog,
   DialogContent,
@@ -31,9 +32,9 @@ export interface Task {
 }
 
 const PRIORITY_COLORS: Record<Priority, string> = {
-  low: 'bg-blue-500/20 text-blue-700 dark:text-blue-300 border-blue-500/30',
-  medium: 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-300 border-yellow-500/30',
-  high: 'bg-red-500/20 text-red-700 dark:text-red-300 border-red-500/30',
+  low: 'bg-blue-500/20 text-blue-700 dark:text-blue-300 border-blue-500/30 dark:border-blue-500/30',
+  medium: 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-300 border-yellow-500/30 dark:border-yellow-500/30',
+  high: 'bg-red-500/20 text-red-700 dark:text-red-300 border-red-500/30 dark:border-red-500/30',
 };
 
 const CATEGORIES = ['General', 'Work', 'Personal', 'Health', 'Booth', 'Vending', 'Trading'];
@@ -46,6 +47,7 @@ const COLUMNS: Record<Column, { title: string; icon: string; emoji: string }> = 
 };
 
 export default function TaskBoard() {
+  const { theme, setTheme } = useTheme();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
@@ -69,6 +71,10 @@ export default function TaskBoard() {
   useEffect(() => {
     localStorage.setItem('ticket-board-tasks', JSON.stringify(tasks));
   }, [tasks]);
+
+  const toggleTheme = () => {
+    setTheme(theme === 'dark' ? 'light' : 'dark');
+  };
 
   const openDialog = (task?: Task) => {
     if (task) {
@@ -151,21 +157,31 @@ export default function TaskBoard() {
                 {tasksByColumn.todo.length} to do · {tasksByColumn['in-progress'].length} in progress · {tasksByColumn.done.length} done
               </p>
             </div>
-            <Button
-              onClick={() => openDialog()}
-              size="lg"
-              className="gap-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
-            >
-              <Plus className="h-5 w-5" />
-              Add Task
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={toggleTheme}
+                className="rounded-full"
+              >
+                {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+              </Button>
+              <Button
+                onClick={() => openDialog()}
+                size="lg"
+                className="gap-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+              >
+                <Plus className="h-5 w-5" />
+                Add Task
+              </Button>
+            </div>
           </div>
         </div>
 
         {/* Kanban Board */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {(Object.entries(COLUMNS) as [Column, { title: string; icon: string; emoji: string }][]).map(([columnId, col]) => (
-            <div key={columnId} className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-sm rounded-xl p-4">
+            <div key={columnId} className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-sm rounded-xl p-4 transition-colors">
               <div className="flex items-center gap-2 mb-4">
                 <span className="text-2xl">{col.emoji}</span>
                 <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-200">
@@ -375,7 +391,7 @@ function TaskCard({
                 onClick={() => onMove('hold')}
                 className="flex-1"
               >
-                ⏸ Hold
+                ⏸️ Hold
               </Button>
               <Button
                 variant="outline"
